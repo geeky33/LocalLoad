@@ -1,0 +1,36 @@
+%% Use-case diagram for LocalLoad (Mermaid has no native UML use-case type; a flowchart with oval nodes is used).
+%%{init: {"flowchart": {"nodeSpacing": 14, "rankSpacing": 90, "wrappingWidth": 420}, "themeVariables": {"fontSize": "18px"}}}%%
+flowchart LR
+  guest["Guest"]:::actor
+  commuter["Commuter"]:::actor
+  admin["Administrator"]:::actor
+  sim["Simulation Engine<br/>(system)"]:::system
+  bots["Simulated Commuters<br/>(system)"]:::system
+
+  subgraph SYS["LocalLoad"]
+    direction TB
+    uc1(["UC-01 Register / Log in"])
+    uc2(["UC-02 Search timetable"])
+    uc3(["UC-03 Track train on map"])
+    uc4(["UC-04 Report crowd level"])
+    uc5(["UC-05 Report delay"])
+    uc6(["UC-06 View verified status"])
+    uc7(["UC-07 Manage daily routes"])
+    uc8(["UC-08 View nearest station"])
+    uc9(["UC-09 Receive alerts"])
+    uc10(["UC-10 View insights"])
+    uc11(["UC-11 Change theme / settings"])
+    uc12(["UC-12 Control simulation"])
+    uc13(["UC-13 View users and reports"])
+    uc14(["UC-14 Move trains"])
+    uc15(["UC-15 Submit demo reports"])
+  end
+
+  guest --- uc1
+  commuter --- uc2 & uc3 & uc4 & uc5 & uc6 & uc7 & uc8 & uc9 & uc10 & uc11
+  admin --- uc12 & uc13
+  sim --- uc14
+  bots --- uc15
+
+  classDef actor fill:#E6EEFE,stroke:#2563EB,color:#0F1B2D,font-weight:bold
+  classDef system fill:#F3F4F6,stroke:#6B7280,color:#0F1B2D,stroke-dasharray: 4 3

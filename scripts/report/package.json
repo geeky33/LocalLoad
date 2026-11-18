@@ -1,0 +1,11 @@
+{
+  "name": "localload-report-tools",
+  "private": true,
+  "description": "Tooling for building docs/report (diagram rendering). Install with: npm --prefix scripts/report install",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^12.2.0"
+  }
+}

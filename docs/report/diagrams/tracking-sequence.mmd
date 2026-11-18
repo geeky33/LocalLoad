@@ -1,0 +1,21 @@
+%% Sequence of a simulated live-tracking session.
+sequenceDiagram
+  participant U as Commuter (app)
+  participant API as Express REST API
+  participant IO as Socket.IO server
+  participant ENG as SimulationEngine
+  participant DB as MongoDB
+
+  U->>API: GET /api/tracking/:instanceId
+  API->>ENG: get(instanceId)
+  ENG-->>API: current position and route
+  API-->>U: snapshot (route polyline, stations, position)
+  U->>IO: join-train(instanceId)
+  IO-->>U: train-position-update (current)
+  loop every SIMULATION_INTERVAL_MS
+    ENG->>ENG: step(): advance progress, interpolate lat/lng
+    ENG->>IO: emit to room train:instanceId
+    IO-->>U: train-position-update
+    ENG->>DB: bulkWrite positions
+  end
+  U->>IO: leave-train(instanceId) on screen close

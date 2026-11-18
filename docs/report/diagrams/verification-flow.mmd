@@ -1,0 +1,13 @@
+%% Five-user verification of a crowd (or delay) report.
+%%{init: {"flowchart": {"nodeSpacing": 40, "rankSpacing": 30, "wrappingWidth": 260}, "themeVariables": {"fontSize": "16px"}}}%%
+flowchart TD
+  A[Report received] --> B{On route?}
+  B -- No --> X1[Reject: HTTP 400 - station not on route]
+  B -- Yes --> C{Voted in last 10 min?}
+  C -- Yes --> X2[Reject: HTTP 409 - duplicate vote]
+  C -- No --> D[Store report - unique index guards duplicates]
+  D --> E{5 or more users?}
+  E -- No --> G[UNVERIFIED n/5]
+  E -- Yes --> H{Majority over 50%?}
+  H -- Yes --> I[CONFIRMED value]
+  H -- No --> J[MIXED]

@@ -1,0 +1,29 @@
+# Report metadata and build settings. Read by scripts/build_report.sh.
+title: "LocalLoad"
+subtitle: "A Mumbai Suburban Railway Companion Application with Simulated Train Tracking and Community-Verified Crowd Reporting"
+author:
+  - "Aarya Pandey"
+  - "Registration No.: 231071003"
+  - "Batch C"
+  - "Final Year B.Tech, Computer Engineering"
+  - "Under the guidance of: **[TODO: guide name and designation]**"
+institution: "Veermata Jijabai Technological Institute (VJTI), Mumbai"
+department: "Department of Computer Engineering and Information Technology"
+# The build script overrides this with the build date (format: 18 November 2026).
+date: "November 2026"
+# Cover-page line that combines department and institution (rendered under the date).
+abstract: |
+  Department of Computer Engineering and Information Technology
+
+  Veermata Jijabai Technological Institute (VJTI), Mumbai
+
+  Project Report
+lang: en-GB
+# The cover lines above are given as an abstract; hide the default "Abstract" heading.
+abstract-title: ""
+
+# ---- build settings (used by scripts/build_report.sh) ----
+toc: true
+toc-depth: 2
+toc-title: "Table of Contents"
+number-sections: true

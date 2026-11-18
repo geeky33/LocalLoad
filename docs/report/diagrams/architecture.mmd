@@ -1,0 +1,17 @@
+%% System architecture of LocalLoad.
+flowchart TB
+  subgraph Phone["iPhone - Expo Go (React Native app)"]
+    direction LR
+    UI["Screens<br/>Home, Track, Map,<br/>Report, Insights,<br/>Profile, Admin"] --> CTX["Contexts<br/>Auth, Theme,<br/>Nearest station"] --> HOOKS["Hooks<br/>useTrainTracking,<br/>useAsync,<br/>useRouteAlerts"] --> SVC["Services<br/>Axios, Socket.IO client,<br/>secure storage,<br/>notifications"]
+  end
+
+  subgraph Server["Node.js backend (Express 5 + Socket.IO)"]
+    direction LR
+    EXP["Express<br/>routes, validation,<br/>JWT middleware"] --> CTRL["Controllers<br/>auth, trains, tracking,<br/>reports, routes,<br/>insights, admin"] --> SRV["Services<br/>verification, status,<br/>reports, alerts,<br/>crowd model"] --> IO["Socket.IO rooms<br/>train:id, user:id,<br/>station:name, feed"]
+    SIM["Simulation<br/>SimulationEngine,<br/>CommuterSimulator"] --> SRV
+  end
+
+  DB[("MongoDB - 8 collections")]
+
+  Phone <== "REST / JSON and WebSocket events" ==> Server
+  Server == "Mongoose" ==> DB
