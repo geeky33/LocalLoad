@@ -16,7 +16,7 @@ LocalLoad is a client–server system made up of a cross-platform mobile applica
 3. **Saved routes and alerts.** Users save daily routes. When a report changes the confirmed status of a train serving a saved route, the backend stores a notification and pushes it to the user, and the app displays it as a local notification.
 4. **Nearest station and arrival alerts.** With the user's permission, the app determines the nearest station from the phone's location. It sends only the station *name* to the server, which alerts the user when a train with a confirmed green or yellow crowd status arrives at that station.
 5. **Live crowd feed with simulated commuters.** A set of clearly labelled demonstration accounts reports crowd levels for running trains, following a time-of-day pattern based on the current time in Mumbai. This keeps the live feed populated during demonstrations. These reports pass through the same verification logic as reports from real users.
-6. **Insights.** MongoDB aggregation pipelines compute hourly, weekday, station-wise and train-wise crowd statistics over stored reports. Most of these reports are seeded sample data and are labelled as such.
+6. **Insights.** MongoDB aggregation pipelines compute hourly, weekday, station-wise and train-wise crowd statistics over stored reports. The statistics can be restricted to one weekday across all weeks, chosen from a drop-down list that defaults to the current weekday, or to a single calendar date chosen from a month calendar on which days with stored data are marked. Most of these reports are seeded sample data and are labelled as such.
 
 ## Application screens
 

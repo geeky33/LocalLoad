@@ -12,7 +12,7 @@ The following are implemented in the current version of the project:
 - Saved daily routes (create, read, update, delete) with matching trains and their status.
 - Notifications for confirmed changes on saved routes and for less crowded trains arriving at the user's nearest station.
 - A live crowd feed showing who reported each status, populated in part by labelled simulated commuter accounts.
-- Insights computed from stored crowd reports (hourly pattern, morning versus evening, weekday trend, most crowded stations and trains).
+- Insights computed from stored crowd reports (hourly pattern, morning versus evening, weekday trend, most crowded stations and trains), filterable by weekday or by a specific date selected from a calendar.
 - A minimal administrative view (users, reports, verification counts, simulation controls).
 - Automated tests for the verification algorithm and the main API flows.
 

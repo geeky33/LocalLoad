@@ -15,6 +15,7 @@ The diagram below is generated from the Mongoose model files by `scripts/report/
 - **Stations per line.** A station that is served by two lines (for example Dadar on the Western and Central lines) is stored once per line, with a line-specific code (`W-DDR`, `C-DR`), because its sequence and coordinates differ per line. Search and nearest-station queries match on the station *name*, so the user sees a single station.
 - **Train versus train instance.** `Train` holds the static timetable entry. `TrainInstance` holds the mutable state of its running copy in the simulation (current segment, progress, coordinates, speed). Reports refer to the instance.
 - **Duplicate-vote protection.** `CrowdReport` and `DelayReport` store a `windowBucket`, equal to the report time divided by the reporting window and rounded down. A unique compound index on `{user, trainInstance, station, windowBucket}` prevents two stored votes by the same user for the same train and station in the same window, even under concurrent requests.
+- **Time zone.** Report times are stored in UTC; all grouping by hour, weekday and date for the Insights screen is done in the `Asia/Kolkata` time zone inside the aggregation pipeline, so that "Monday" and "8 am" refer to Mumbai time.
 - **Sample data.** Reports created by the seed script carry `isSample: true`. Seeded demonstration accounts carry `isDemo: true`. Both flags are used to label data in the interface and to exclude sample data where needed.
 
 ## Collections

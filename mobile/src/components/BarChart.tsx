@@ -10,10 +10,12 @@ export function BarChart({
   data,
   max,
   height = 120,
+  highlight,
 }: {
   data: { label: string; value: number; level: CrowdLevel }[];
   max: number;
   height?: number;
+  highlight?: number; // index of a bar to emphasise; the others are dimmed
 }) {
   const { colors } = useTheme();
   return (
@@ -27,10 +29,10 @@ export function BarChart({
               backgroundColor: colors.crowd[d.level],
               borderTopLeftRadius: 4,
               borderTopRightRadius: 4,
-              opacity: 0.9,
+              opacity: highlight === undefined || highlight === i ? 0.95 : 0.3,
             }}
           />
-          <T variant="small" style={{ fontSize: 10, marginTop: 4 }} numberOfLines={1}>
+          <T variant="small" style={{ fontSize: 10, marginTop: 4, fontWeight: highlight === i ? '800' : '400' }} numberOfLines={1}>
             {d.label}
           </T>
         </View>

@@ -253,7 +253,9 @@ On **Home**, tap the **bell** icon. The crowd and delay alerts appear, stored in
 
 ### Scene 11 – Insights (1.5 min)
 
-1. Open the **Insights** tab and point to the **SAMPLE HISTORICAL DATA** badge and the total report count.
+1. Open the **Insights** tab and point to the **SAMPLE HISTORICAL DATA** badge. It opens on **today's weekday** (e.g. "Showing every Wednesday").
+   - Tap the **Weekday** dropdown and pick **Monday**, then **Saturday**: Saturday is noticeably quieter, and the highlighted bar in the weekly chart moves.
+   - Switch to **By date** and tap the date field to open the **calendar**. Days with stored reports have a dot (green = quiet, yellow = moderate, red = busy). Pick a day and the whole screen updates for that date. Tap **Today** to see today's live reports, or pick a date without a dot to show the empty state.
 2. Show **Best time to travel** (green) and **Most crowded slots** (red).
 3. Show the **Crowd by hour** bar chart, with peaks in the morning and evening rush.
 4. Show **Morning vs Evening**, with the distribution bars and percentages.

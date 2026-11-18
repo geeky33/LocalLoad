@@ -299,3 +299,28 @@ describe('nearest-station alerts', () => {
     assert.equal(notes.filter((n: any) => n.type === 'nearby').length, 1);
   });
 });
+
+describe('insights by weekday and date', () => {
+  it('filters by ?date and ?day and lists dates that have data', async () => {
+    const today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10); // IST date
+    const all = (await api.get('/api/insights/overview')).body;
+    const byDate = (await api.get('/api/insights/overview').query({ date: today })).body;
+    assert.equal(byDate.filter.type, 'date');
+    assert.ok(byDate.totalReports > 0, 'reports made in the tests are dated today');
+    assert.equal(byDate.totalReports, all.totalReports); // every test report is from today
+
+    const isoDay = ((new Date(Date.now() + 5.5 * 3600_000).getUTCDay() + 6) % 7) + 1;
+    const byDay = (await api.get('/api/insights/overview').query({ day: isoDay })).body;
+    assert.equal(byDay.filter.type, 'weekday');
+    assert.equal(byDay.totalReports, all.totalReports);
+    const otherDay = (await api.get('/api/insights/overview').query({ day: (isoDay % 7) + 1 })).body;
+    assert.equal(otherDay.totalReports, 0);
+
+    assert.equal((await api.get('/api/insights/overview').query({ date: '2001-01-01' })).body.totalReports, 0);
+    assert.equal((await api.get('/api/insights/overview').query({ day: 8 })).status, 400);
+    assert.equal((await api.get('/api/insights/overview').query({ date: '2026-02-30' })).status, 400);
+
+    const dates = (await api.get('/api/insights/dates')).body.dates;
+    assert.deepEqual(dates.map((d: any) => d.date), [today]);
+  });
+});

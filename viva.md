@@ -165,6 +165,9 @@ Replace the `SimulationEngine` with a module that reads an official or licensed 
 - Connecting a physical iPhone to a local server (`localhost` means the phone itself; we use the computer's LAN IP).
 - Making the seed idempotent so running it twice creates no duplicates.
 
+### 34. What are the future enhancements?
+Real data feeds, real track shapes, remote push notifications, a reputation system for reporters, platform and coach-level crowding, offline timetable, and multi-language support (Marathi/Hindi).
+
 ### 35. How does the nearest-station feature work?
 1. The app asks for **foreground location permission** with `expo-location`. It only asks while the app is open.
 2. It reads the phone's latitude and longitude, using a recent cached fix if one exists.
@@ -174,6 +177,13 @@ Replace the `SimulationEngine` with a module that reads an official or licensed 
 
 The location is **not stored** in the database. It is used for this one calculation only. If permission is denied, the card shows an "Allow location" or "Open Settings" button instead.
 
+### 36. Why is "Recent crowd updates" always filled? Who are the reporters?
+The server runs **simulated commuters**: 15 demo accounts (for example *Aarav Shah*), flagged `isDemo` in the database. Every 15 seconds a small group of them "stands on the platform" of a running train, at the station the train is at **right now**, and reports the crowd.
+- The level comes from the **current Mumbai time**: busy at 8–10am and 5–8pm, quiet late at night, lighter at weekends, busier at hubs such as Dadar and Kurla. Each commuter agrees with that level about 75% of the time, so mixed and unverified results happen naturally too.
+- Their reports go through **the same code path as real users**, so the 10-minute window, duplicate protection and five-user verification all apply.
+- Home shows **who reported** each status. Real users appear as "First L." for privacy, and demo commuters carry a **demo** tag so they're never mistaken for real people.
+- They skip train 90101, which is kept clean for the live five-user demo, and their reports never send route alerts.
+
 ### 37. How do nearest-station alerts work?
 1. The app finds your nearest station (see Q35) and sends only its **name** to the server with the Socket.IO event `watch-station`. The server puts the socket in room `station:<name>`.
 2. The simulation engine raises an **arrival event** whenever a train reaches a station.
@@ -182,15 +192,185 @@ The location is **not stored** in the database. It is used for this one calculat
 5. The server saves a `Notification` (type `nearby`) and emits `route-alert` to the user. The phone shows it as a local notification.
 6. A **60-second cooldown** per user and station prevents spam, and the alert can be turned off in Profile ("Trains at my nearest station").
 
-### 36. Why is "Recent crowd updates" always filled? Who are the reporters?
-The server runs **simulated commuters**: 15 demo accounts (for example *Aarav Shah*), flagged `isDemo` in the database. Every 15 seconds a small group of them "stands on the platform" of a running train, at the station the train is at **right now**, and reports the crowd.
-- The level comes from the **current Mumbai time**: busy at 8–10am and 5–8pm, quiet late at night, lighter at weekends, busier at hubs such as Dadar and Kurla. Each commuter agrees with that level about 75% of the time, so mixed and unverified results happen naturally too.
-- Their reports go through **the same code path as real users**, so the 10-minute window, duplicate protection and five-user verification all apply.
-- Home shows **who reported** each status. Real users appear as "First L." for privacy, and demo commuters carry a **demo** tag so they're never mistaken for real people.
-- They skip train 90101, which is kept clean for the live five-user demo, and their reports never send route alerts.
+---
 
-### 34. What are the future enhancements?
-Real data feeds, real track shapes, remote push notifications, a reputation system for reporters, platform and coach-level crowding, offline timetable, and multi-language support (Marathi/Hindi).
+## How the App Works Internally
+
+This part explains how the code is organised and how the phone, the server and the database work together. Everything here matches the actual files in the repository.
+
+### A. Components, props and state
+
+**Components** are the building blocks of the screens.
+
+| Kind | Examples | Folder |
+|---|---|---|
+| Basic UI | `Screen`, `Card`, `Button`, `Field`, `Chips`, `Pill`, `Loading`, `ErrorState`, `Empty` | `mobile/src/components/ui.tsx` |
+| Feature components | `TrainCard`, `CrowdStatusCard`, `CoachMeter`, `ReporterList`, `StationPicker`, `Dropdown`, `CalendarPicker`, `BarChart`, `NearestStationCard` | `mobile/src/components/` |
+| Screens | Welcome, Login, Signup, Home, Track, Tracking (map), Report, Insights, Profile, RouteForm, Notifications, Admin | `mobile/src/screens/` |
+
+**Props** are the inputs a parent passes to a component. The component only displays them; it doesn't fetch them.
+
+```tsx
+<TrainCard train={item} onTrack={() => nav.navigate('Tracking', { instanceId, trainId })} />
+```
+
+- `TrainCard`: `train` (data), `onTrack` (a function to call when tapped), `compact` (optional).
+- `Button`: `title`, `onPress`, `variant` (primary / secondary / ghost / danger), `icon`, `loading`, `disabled`.
+- `CrowdStatusCard`: `verdict`, the crowd status from the server (state, counts, distribution, reporters).
+- `StationPicker` and `Dropdown`: `value` and `onChange`. This is a **controlled component**: the parent owns the value, and the child reports changes back.
+- `BarChart`: `data`, `max`, `height`, `highlight`.
+- **Navigation params** act as props for screens. The Tracking screen receives `{ instanceId, trainId, name }` in `route.params`.
+
+**State** is data a component remembers. When it changes, React re-renders the screen.
+
+1. **Local state (`useState`)** belongs to one screen. Examples: the Track screen's search text and filters (`q`, `line`, `type`, `direction`, `from`, `to`); Insights' `mode`, `day` and `date`; the Login form's fields, `error` and `busy` flags.
+2. **Shared state (React Context)** is used by many screens:
+   - `AuthContext`: `user`, `stats`, `loading`, `login()`, `register()`, `logout()`, `refresh()`.
+   - `ThemeContext`: `mode` (system, light or dark), `colors`, `isDark`. Every component takes its colours from here, which is how dark mode applies everywhere.
+   - `NearestStationContext`: the nearest station, found once and shared by the Home card and the alerts.
+3. **Custom hooks** are reusable pieces of state logic:
+   - `useAsync(fn)` returns `{ data, loading, error, reload }`, used for every data screen.
+   - `useTrainTracking(id)` returns `{ position, crowd, delay, connected }`, kept live through Socket.IO.
+   - `useSmoothCoord` animates the train marker; `useRouteAlerts` shows alerts as notifications; `useNearestStation` reads the location.
+4. **`useEffect`** runs side effects (fetching data, subscribing to the socket, timers). Its *cleanup* function unsubscribes when the screen closes. **`useRef`** keeps values that shouldn't cause a re-render, such as the map object and debounce timers.
+
+### B. How the frontend and backend are connected
+
+```
+iPhone (Expo Go)                              Laptop: Node.js on port 4000
+─────────────────                             ─────────────────────────────
+Axios  ──── HTTP request / JSON response ──▶  Express routes → controllers → services → Mongoose → MongoDB
+Socket.IO client ◀──── live events ───────▶   Socket.IO server (rooms)
+```
+
+There are two channels:
+
+1. **REST API (request → response)** is used for login, search, reports, routes, insights and settings.
+   - `mobile/src/services/api.ts` creates one Axios client with base URL `http://<laptop-IP>:4000/api`.
+   - The address comes from `EXPO_PUBLIC_API_URL`, or is detected from the Expo dev server's address.
+   - An *interceptor* adds the login token to every request.
+   - On the server, a request passes through: **route** (`routes/index.ts`: URL, validation, JWT check) → **controller** (reads the request, sends the response) → **service** (business logic, e.g. verification) → **Mongoose model** → **MongoDB**. The answer returns as JSON.
+2. **Socket.IO (server pushes data)** is used for anything live. The phone keeps a single open WebSocket connection (`services/socket.ts`). **Rooms** ensure each phone receives only what it needs:
+
+| Room | Who is in it | What it receives |
+|---|---|---|
+| `train:<instanceId>` | phones showing that train's map | `train-position-update` every tick, `crowd-status-update`, `delay-status-update` |
+| `user:<userId>` | every logged-in phone of that user | `route-alert` (saved-route and nearest-station alerts) |
+| `station:<name>` | users whose nearest station is `<name>` | used by the server to find who gets arrival alerts |
+| `feed` | phones showing the Home screen | `feed-update`, a ping to re-fetch the live crowd feed |
+
+### C. How the database is connected
+
+- **The phone never connects to MongoDB.** Only the server does. If the app contained database credentials, anyone could extract them and read or delete all the data.
+- MongoDB runs in Docker (`localload-mongo`, port 27017). When the server starts, `server/src/config/db.ts` runs `mongoose.connect(MONGODB_URI)` and then `syncIndexes()`. The unique indexes, including the one that blocks duplicate votes, therefore exist before any request arrives.
+- The **Mongoose models** in `server/src/models/` define the 8 collections, the type of each field, the references between documents (a report points to a user, a train instance, a train and a station) and the indexes.
+- The simulation engine writes train positions to the `traininstances` collection on every tick. When the server restarts, it reloads them, so trains continue from where they were.
+
+### D. JWT: how the token is generated and used
+
+1. **Register / login:** the server looks up the user by email and checks the password with `bcrypt.compare`. Passwords are stored only as bcrypt hashes.
+2. **Generation** (`server/src/middleware/auth.ts`):
+   ```ts
+   jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+   ```
+   The token has three base64url parts, `header.payload.signature`:
+   - **header:** the algorithm, HS256;
+   - **payload:** `{ id, role, iat, exp }` (issued-at and expiry times);
+   - **signature:** an HMAC-SHA256 of the header and payload, made with `JWT_SECRET`. Without the secret, nobody can create a valid token or change one (for example, turn `role` into `admin`).
+3. **Storage:** the app saves the token in the iPhone Keychain (`expo-secure-store`).
+4. **Use:** the Axios interceptor sends `Authorization: Bearer <token>`. The `requireAuth` middleware calls `jwt.verify()`.
+   - If the token is valid, it sets `req.user = { id, role }`. If not, the response is **401**.
+   - Admin routes also check `role === 'admin'`, otherwise **403**.
+5. **Socket:** the token is sent when the socket connects, so the server can put the phone in its `user:<id>` room.
+6. **App launch:** the app calls `GET /api/auth/me`. If the token has expired, it's deleted and the login screen appears.
+7. **Points to mention:** JWT is *stateless* (no sessions are stored on the server). The payload is only encoded, not encrypted, so it holds no secrets. Logout deletes the token on the phone, but a copied token would stay valid until it expires (a known limitation).
+
+### E. Step-by-step flows between frontend and backend
+
+**1. Opening the app and logging in**
+1. `AuthContext` reads the token from secure storage.
+2. If there is a token: `GET /api/auth/me` → the server verifies the JWT → returns the user → the app shows the tabs and connects the socket with the token.
+3. If there is no token, or it is invalid: the Welcome screen is shown → Login → `POST /api/auth/login` → the server checks bcrypt and signs a JWT → the app stores it and shows the tabs.
+
+**2. Searching and opening a train**
+1. Track screen: `GET /api/stations` fills the station pickers.
+2. Typing or choosing filters → `GET /api/trains/search?from=Dadar&to=Andheri&type=fast` → the server filters the timetable from MongoDB, calculates the scheduled times, attaches each train's crowd and delay status, and returns the trains.
+3. Tapping **Track Train** opens the Tracking screen with `{ instanceId, trainId }`.
+
+**3. Live train movement (server → phone)**
+1. On the server, `SimulationEngine.tick()` runs every 3 s. Each train moves along its segment; its latitude and longitude are interpolated between two stations.
+2. The engine saves the positions to MongoDB and emits `train-position-update` to room `train:<id>`.
+3. The phone's `useTrainTracking` hook receives the event and updates its `position` state → React re-renders → `useSmoothCoord` glides the marker to the new point.
+
+**4. Reporting crowd → verification → everyone updates**
+1. Report screen: `POST /api/reports/crowd { trainInstanceId, stationId, level }` with the JWT.
+2. The server checks that the station is on the route and that the user hasn't voted there in the last 10 minutes (otherwise **409**), then saves the report (the unique index blocks races).
+3. It recomputes the verdict (*unverified* below 5 users, *confirmed* with a strict majority, *mixed* otherwise) and returns it to the reporter.
+4. It emits `crowd-status-update` to `train:<id>` (open maps update), and `feed-update` to `feed` (Home refreshes its feed).
+5. If the **confirmed** value changed, it finds users whose saved routes this train serves, saves a `Notification` and emits `route-alert` to `user:<id>`. The phone shows a local notification.
+
+**5. Nearest station and arrival alerts**
+1. The phone reads its location (with permission) → `GET /api/stations/nearest?lat=…&lng=…` → the server calculates haversine distances and returns the closest stations.
+2. The phone emits `watch-station "Dadar"` (only the name, never the coordinates) and joins `station:Dadar`.
+3. When a simulated train arrives at Dadar with a confirmed green or yellow status, the server emits `route-alert` (type `nearby`) to the watching users, at most once a minute.
+
+**6. Insights for a weekday or date**
+1. Insights opens with today's weekday → `GET /api/insights/overview?day=3`. Picking a date in the calendar → `?date=2026-11-16`.
+2. The server adds a `$match` on the weekday or date (India time) to its aggregation pipelines and returns the hourly, morning/evening, station and train statistics.
+3. `GET /api/insights/dates` tells the calendar which days have data, so it can show the dots.
+
+### F. Screen-to-backend mapping
+
+| Screen | REST calls | Socket events |
+|---|---|---|
+| Login / Signup | `POST /auth/login`, `POST /auth/register`; on start `GET /auth/me` | socket (re)connects with the token |
+| Home | `GET /routes`, `GET /tracking/active`, `GET /trains`, `GET /crowd/recent`, `GET /stations/nearest` | `join-feed` → `feed-update`; `watch-station`; `route-alert` (on every screen) |
+| Track (search) | `GET /stations`, `GET /trains/search` | — |
+| Tracking (map) | `GET /tracking/:instanceId`, `GET /trains/:id/status` | `join-train` / `leave-train` → `train-position-update`, `crowd-status-update`, `delay-status-update` |
+| Report | `GET /tracking/active`, `GET /trains/:id`, `POST /reports/crowd` or `/reports/delay`, `GET /auth/me` | (the server broadcasts the result to others) |
+| Insights | `GET /insights/overview?day=…` or `?date=…`, `GET /insights/weekly`, `GET /insights/dates`, `GET /insights/station/:id` | — |
+| Profile | `GET /routes`, `GET /auth/me`, `PUT /notifications/settings`, `DELETE /routes/:id` | — |
+| Route form | `GET /stations`, `POST /routes`, `PUT /routes/:id`, `DELETE /routes/:id` | — |
+| Notifications | `GET /notifications`, `PUT /notifications/read` | — |
+| Admin | `GET /admin/simulation/status`, `/admin/verification`, `/admin/reports`, `/admin/users`; `POST /admin/simulation/start` / `stop` / `reset` / `speed` | — |
+
+### G. The tracking map: what each element shows and where it comes from
+
+The map is `MapView` from `react-native-maps` (Apple Maps on iOS) in `mobile/src/screens/TrackingScreen.tsx`.
+
+| What you see on the map | Data source | How it is drawn |
+|---|---|---|
+| **Coloured route line** | `route` (ordered station list with lat/lng) from `GET /tracking/:instanceId` | `<Polyline>` through all station coordinates; colour from `LINE_COLORS` (Western purple, Central teal, Harbour pink) |
+| **Station dots** | the same `route` list | one `<Marker>` per station; **filled** = already passed, **white** = still ahead; tapping shows the name and code |
+| **Moving train marker** | `position.lat/lng`: first from REST, then every `train-position-update` | `<Marker>` with a train icon in the line colour; `useSmoothCoord` animates it between updates; it jumps instead of sliding when a train restarts its loop |
+| **Your blue dot** | the phone's own GPS (only if location was already allowed) | `showsUserLocation`; your position never leaves the phone |
+| **Initial view** | the train's position, then all stations | `initialRegion` centred on the train, then `fitToCoordinates` zooms to show the whole route |
+| **Locate button** | the current train position | `animateToRegion` zooms to the train |
+| **Dark map** | `isDark` from `ThemeContext` | `userInterfaceStyle="dark"` |
+| **Top card** | `position`: name, number, line, type, direction; `delay.summary` | train details, the **SIMULATED LIVE TRACKING** badge, a green "live" dot when the socket is connected, the delay pill |
+| **Bottom panel** | `position`: previous/next station, `etaMinutes`, `speedKmph`, `distanceToNextKm`, `lastUpdated`, `journeyProgress` | "Between X and Y" / "Halted at X", a progress strip, stat boxes, simulated coordinates |
+| **Crowd card** | `crowd.summary` from REST, then `crowd-status-update` | the verified status, distribution and who reported it |
+
+How a number on the screen is produced, for example the **ETA**: on each tick the server calculates `remaining km = segment length × (1 − progress)` and `ETA = remaining km ÷ (75% of cruise speed)`. It sends this in `train-position-update`, the hook stores it in `position`, and the bottom panel displays `~N min`.
+
+The diagrams in the project report (architecture, use case, ER, sequence and verification flow) are generated from the Mermaid files in `docs/report/diagrams/` and show the same structure.
+
+### H. Difficulties faced and how they were solved
+
+| Problem | Cause | Solution |
+|---|---|---|
+| Phone couldn't reach the server | On the phone, `localhost` means the phone itself | Use the laptop's LAN IP, detected automatically from Expo's address |
+| Duplicate votes from simultaneous requests | The application check alone allows a race | Unique MongoDB index on `{user, trainInstance, station, windowBucket}` |
+| Train marker jumped every 3 seconds | Positions arrive in steps | `useSmoothCoord` animation; jumps (not slides) when a train restarts its loop |
+| Missed alerts after login | Login replaced the socket, so earlier listeners were lost | One long-lived socket; only its token changes |
+| Listeners leaking after leaving the map | The subscription was never closed | `useEffect` cleanup: `leave-train` and `socket.off(...)` |
+| Expo API changes | SDK 58 renamed notification options (`shouldShowBanner`) | Read the versioned Expo documentation before coding |
+| MongoDB wouldn't start for tests | The disk was almost full (MongoDB needs 500 MB free) | Freed space; tests use an in-memory database |
+| `ENOSPC: file watchers` | Linux limits how many files can be watched | Raised `fs.inotify.max_user_watches`; added `npm run serve` without watching |
+| `Port 4000 already in use` | An old server was still running | Clear error message with the command to stop it |
+| Wrong day or hour in Insights | MongoDB stores times in UTC | All grouping is done in the `Asia/Kolkata` time zone |
+| Empty live feed during demos | No real commuters | Simulated commuters, labelled "demo", that skip the demo train 90101 |
+| Old pandoc for the report | Ubuntu's pandoc 2.9 lacks features | A numbering filter and XML fixes in the build script |
 
 ---
 
@@ -272,6 +452,7 @@ All six cases are automated tests in `server/src/tests/verification.test.ts`, an
 12. **How does the app find the server on an iPhone?** From `EXPO_PUBLIC_API_URL`, or else from the Expo dev server's IP with port 4000.
 13. **What happens to socket listeners when leaving the map?** The app emits `leave-train` and removes every listener in the hook's cleanup function.
 14. **How are Insights calculated?** With MongoDB aggregation pipelines, scoring green = 1, yellow = 2, red = 3 and averaging by hour, weekday, station and train, in the India time zone.
+14a. **How does the weekday / date filter work?** The app sends `?day=3` (Wednesday) or `?date=2026-11-16`. For a weekday, the pipeline adds a `$match` on `$isoDayOfWeek` of the report time (Asia/Kolkata). For a date, it matches reports between midnight and midnight IST of that day. The calendar asks `/api/insights/dates` which days have data and marks them with a dot.
 15. **Do Insights use machine learning?** No. They are simple averages of stored reports.
 16. **How do you get contribution points?** +1 for every accepted report.
 17. **What is the reporting window?** 10 minutes (`REPORT_WINDOW_MINUTES`).

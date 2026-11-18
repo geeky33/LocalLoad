@@ -80,9 +80,19 @@ r.put('/routes/:id', requireAuth, idParam('id'), ...routeBody, routes.updateRout
 r.delete('/routes/:id', requireAuth, idParam('id'), validate, routes.deleteRoute);
 
 // ---------- Insights (sample historical data) ----------
-r.get('/insights/overview', insights.overview);
+const insightFilter = [
+  query('day').optional({ values: 'falsy' }).isInt({ min: 1, max: 7 }).withMessage('day must be 1 (Monday) to 7 (Sunday)'),
+  query('date')
+    .optional({ values: 'falsy' })
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .bail()
+    .isISO8601({ strict: true })
+    .withMessage('date must be a valid YYYY-MM-DD date'),
+];
+r.get('/insights/overview', ...insightFilter, validate, insights.overview);
 r.get('/insights/weekly', insights.weekly);
-r.get('/insights/station/:stationId', idParam('stationId'), validate, insights.stationInsights);
+r.get('/insights/dates', insights.datesWithData);
+r.get('/insights/station/:stationId', idParam('stationId'), ...insightFilter, validate, insights.stationInsights);
 
 // ---------- Notifications ----------
 r.get('/notifications', requireAuth, notifications.listNotifications);

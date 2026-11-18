@@ -69,6 +69,7 @@ The following table is generated from the route definitions.
 | DELETE | `/api/routes/:id` | Authenticated (JWT) | `routes.deleteRoute` |
 | GET | `/api/insights/overview` | Public | `insights.overview` |
 | GET | `/api/insights/weekly` | Public | `insights.weekly` |
+| GET | `/api/insights/dates` | Public | `insights.datesWithData` |
 | GET | `/api/insights/station/:stationId` | Public | `insights.stationInsights` |
 | GET | `/api/notifications` | Authenticated (JWT) | `notifications.listNotifications` |
 | PUT | `/api/notifications/settings` | Authenticated (JWT) | `notifications.updateSettings` |

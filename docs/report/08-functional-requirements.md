@@ -41,5 +41,7 @@ Each requirement below is implemented in the current code base.
 ## Insights and administration
 
 - **FR-25** The system shall compute hourly, morning versus evening, weekday, station-wise and train-wise crowd statistics from stored reports, using the Asia/Kolkata time zone.
+- **FR-25a** The system shall restrict these statistics to a selected weekday (all weeks) or to a selected calendar date. The weekday shall default to the current weekday, and invalid weekdays or dates shall be rejected (HTTP 400).
+- **FR-25b** The system shall list the dates on which crowd reports exist, with their average crowd score, so that the calendar can mark them.
 - **FR-26** The system shall allow an administrator to start, stop and reset the simulation and change its speed multiplier, and to view users, recent reports and live verification counts.
 - **FR-27** The seed script shall create stations, trains, train instances, demonstration accounts and sample historical reports idempotently.

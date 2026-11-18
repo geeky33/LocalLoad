@@ -46,7 +46,7 @@ Mumbai locals carry millions of passengers a day, and commuters have no easy way
 | Nearest-station alerts | When a simulated train **arrives at your nearest station** and its crowd is **verified green or yellow**, you get a notification. The phone sends only the station *name* (never coordinates); 60-second cooldown per station; can be switched off in Profile. |
 | Nearest station | Uses the phone's location (with permission) to show the closest station, its lines, distance and walking time, with a "Trains from here" shortcut; your position also appears on the tracking map. The location is never stored. |
 | Notifications | Server creates a notification and emits `route-alert` when a **confirmed** status changes; the app shows it as a local notification; per-user settings |
-| Insights | Best and busiest hours, hourly chart, morning vs evening, weekly trend, most crowded stations (tap for hourly pattern), most crowded trains |
+| Insights | Best and busiest hours, hourly chart, morning vs evening, weekly trend, most crowded stations (tap for hourly pattern), most crowded trains. Filter **by weekday** (dropdown, defaults to today's weekday) or **by date** (calendar with dots on days that have data). |
 | Admin / dev | Start, stop and reset the simulation, change its speed, view verification counts, reports and users (admin accounts only) |
 | UI | Light/dark/system theme, line colours, a "coach meter" crowd indicator, loading, empty and error states |
 
@@ -350,7 +350,9 @@ All endpoints are under `/api`. 🔒 = needs `Authorization: Bearer <token>`; �
 | GET | /delay/status/:trainInstanceId | per-station verdicts + summary |
 | POST/GET | /routes 🔒 | create / list (with matching trains) |
 | PUT/DELETE | /routes/:id 🔒 | update / delete own route |
-| GET | /insights/overview, /insights/weekly, /insights/station/:stationId | sample-data aggregates |
+| GET | /insights/overview, /insights/station/:stationId | sample-data aggregates; optional `?day=1..7` (Mon..Sun) or `?date=YYYY-MM-DD` (IST) |
+| GET | /insights/weekly | average crowd score per weekday |
+| GET | /insights/dates | dates that have reports (for the calendar) |
 | GET | /notifications 🔒 | latest 30 |
 | PUT | /notifications/settings 🔒, /notifications/read 🔒 | settings / mark read |
 | GET | /admin/users, /admin/reports, /admin/verification, /admin/simulation/status 🛠 | |
